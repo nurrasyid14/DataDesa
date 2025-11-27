@@ -1,19 +1,21 @@
-# app.py
+# -------------------------------------------------------------
+# app.py  —  Cleaned Version (KMeans + Fuzzy C-Means only)
+# -------------------------------------------------------------
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.figure_factory as ff
 import numpy as np
+import plotly.express as px
 
 from clustering.pipeline import Pipeline
 from clustering.clusterer import Clustering
 from clustering.fuzzycmeans import FuzzyCMeans
 
+
+# ======================================================================
+# PAGE CONFIG
+# ======================================================================
 st.set_page_config(page_title="Indeks Desa Membangun Indonesia", layout="wide")
 
-# -----------------------------------------
-# CONFIGS
-# -----------------------------------------
 STATUS_MAP = {
     -1: "sangat tertinggal",
      0: "tertinggal",
@@ -31,14 +33,13 @@ DATA_PATH = "indeks-desa-membangun-tahun-2024-hasil-pemutakhiran.xlsx"
 WARNING_STR = "Data hanya memuat Desa, kelurahan tidak diikutsertakan."
 
 
+# ======================================================================
+# LOAD DATA
+# ======================================================================
 @st.cache_data
 def load_data(path):
     return pd.read_excel(path)
 
-
-# ----------------------------------------------------
-# LOAD DATA
-# ----------------------------------------------------
 try:
     df_raw = load_data(DATA_PATH)
 except FileNotFoundError:
@@ -46,168 +47,207 @@ except FileNotFoundError:
     st.stop()
 
 
-# ----------------------------------------------------
+# ======================================================================
 # HEADER
-# ----------------------------------------------------
+# ======================================================================
 st.title("Indeks Desa Membangun Indonesia")
 st.caption(WARNING_STR)
 
-with st.expander("Legend - Index definitions"):
+with st.expander("Legend - Index Definitions"):
     for key, value in LEGENDS.items():
         st.write(f"**{key}** : {value}")
 
 
-# ----------------------------------------------------
+# ======================================================================
 # SIDEBAR
-# ----------------------------------------------------
+# ======================================================================
 st.sidebar.header("Controls")
 
 method_choice = st.sidebar.selectbox(
-    "Clustering method:", 
-    ["kmeans", "dbscan", "agglomerative", "fuzzy", "all"]
+    "Clustering Method:",
+    ["kmeans", "fuzzy", "all"]
 )
 
 n_clusters = st.sidebar.slider("Clusters", 2, 8, 4)
 
-dbscan_eps = st.sidebar.number_input("DBSCAN eps", 0.1, 10.0, 0.5)
-dbscan_min_samples = st.sidebar.slider("DBSCAN min_samples", 1, 20, 5)
-
-run_button = st.sidebar.button("Run pipeline")
+run_button = st.sidebar.button("Run")
 
 
-# ----------------------------------------------------
-# INITIALIZE PIPELINE
-# ----------------------------------------------------
+# Initialize Pipeline
 pipe = Pipeline(df_raw)
 
 
-# ====================================================
-# MAIN EXECUTION
-# ====================================================
+# ======================================================================
+# EXECUTION
+# ======================================================================
 if not run_button:
-    st.info("Click **Run pipeline** to start.")
+    st.info("Click **Run** to begin processing.")
     st.stop()
 
-
-# ----------------------------------------------------
 # PREPROCESS
-# ----------------------------------------------------
-with st.spinner("Preprocessing dataset..."):
+with st.spinner("Cleaning dataset..."):
     cleaned = pipe.preprocess()
 
-st.success("Done preprocessing.")
+st.success("Preprocessing Complete.")
 
 st.subheader("Dataset Preview")
 st.dataframe(cleaned.head(50))
 
 
-# ----------------------------------------------------
-# DISTRIBUTION PIE CHART
-# ----------------------------------------------------
-st.subheader("STATUS_IDM_2024 Distribution")
-status_series = cleaned["STATUS_IDM_2024"].map(STATUS_MAP).fillna("unknown")
+# ======================================================================
+# PIE CHART — NATIONAL STATUS DISTRIBUTION
+# ======================================================================
+st.subheader("Distribusi Status IDM (Nasional)")
+
+status_series = cleaned["STATUS_IDM_2024"].map(STATUS_MAP)
 status_counts = status_series.value_counts()
 
-fig_pie = px.pie(
+fig_status = px.pie(
     names=status_counts.index,
     values=status_counts.values,
-    title="Distribusi STATUS_IDM_2024",
+    title="Distribusi STATUS_IDM_2024 (NASIONAL)",
     hole=0.35
 )
-st.plotly_chart(fig_pie, use_container_width=True)
+st.plotly_chart(fig_status, width="stretch")
 
 
-# ----------------------------------------------------
-# TOP 20 BAR CHART
-# ----------------------------------------------------
-st.subheader("Top 20 Desa NILAI_IDM_2024")
+# ======================================================================
+# PIE CHARTS — PER PROVINCE FOR EACH STATUS
+# ======================================================================
+st.subheader("Distribusi Status per Provinsi")
+
+if "NAMA_PROVINSI" in cleaned.columns:
+
+    for code, label in STATUS_MAP.items():
+        st.markdown(f"### **Status: {label.upper()}**")
+
+        sub = cleaned[cleaned["STATUS_IDM_2024"] == code]
+
+        if len(sub) == 0:
+            st.info("No data available for this status.")
+            continue
+
+        prov_counts = sub["NAMA_PROVINSI"].value_counts()
+
+        fig_prov = px.pie(
+            names=prov_counts.index,
+            values=prov_counts.values,
+            title=f"Sebaran Provinsi — {label}",
+            hole=0.3
+        )
+        st.plotly_chart(fig_prov, width="stretch")
+
+
+# ======================================================================
+# TOP 20 DESA
+# ======================================================================
+st.subheader("Top 20 Desa Berdasarkan NILAI_IDM_2024")
+
 if "NILAI_IDM_2024" in cleaned.columns:
     top20 = cleaned.nlargest(20, "NILAI_IDM_2024")
+
     st.dataframe(top20.reset_index(drop=True))
 
-    fig_bar = px.bar(
+    fig_top20 = px.bar(
         top20,
         x="NAMA_DESA",
         y="NILAI_IDM_2024",
-        hover_data=["NAMA_KABUPATEN", "NAMA_KECAMATAN"],
-        title="Top 20 Desa"
+        title="Top 20 Desa",
+        hover_data=["NAMA_KABUPATEN", "NAMA_KECAMATAN"]
     )
-    fig_bar.update_layout(xaxis_tickangle=-45)
-    st.plotly_chart(fig_bar, use_container_width=True)
+    fig_top20.update_layout(xaxis_tickangle=-45)
+    st.plotly_chart(fig_top20, width="stretch")
 
 
-# ----------------------------------------------------
-# CLUSTERING SECTION
-# ----------------------------------------------------
+# ======================================================================
+# CLUSTERING
+# ======================================================================
 st.subheader("Clustering Results")
 
+
+# Helper plotting function
 def plot_clusters(X, labels, title):
     X = np.array(X)
-    if X.shape[1] > 2:
-        from sklearn.decomposition import PCA
-        X2 = PCA(n_components=2).fit_transform(X)
-        df = pd.DataFrame({"PC1": X2[:,0], "PC2": X2[:,1], "Cluster": labels.astype(str)})
-        return px.scatter(df, x="PC1", y="PC2", color="Cluster", title=title)
-    else:
-        df = pd.DataFrame({
-            "X1": X[:,0],
-            "X2": X[:,1] if X.shape[1] > 1 else X[:,0],
-            "Cluster": labels.astype(str)
-        })
-        return px.scatter(df, x="X1", y="X2", color="Cluster", title=title)
+    from sklearn.decomposition import PCA
+
+    X2 = PCA(n_components=2).fit_transform(X)
+
+    df = pd.DataFrame({
+        "PC1": X2[:, 0],
+        "PC2": X2[:, 1],
+        "Cluster": labels.astype(str)
+    })
+
+    return px.scatter(df, x="PC1", y="PC2", color="Cluster", title=title)
 
 
 methods = (
-    ["kmeans", "dbscan", "agglomerative", "fuzzy"]
+    ["kmeans", "fuzzy"]
     if method_choice == "all"
     else [method_choice]
 )
 
-# Store results separately
-results = {}
 
+# RUN CLUSTERING
 for method in methods:
-    st.markdown(f"### Method: **{method.upper()}**")
+
+    st.markdown(f"## Method: **{method.upper()}**")
 
     if method == "kmeans":
         labels = pipe.kmeans(n_clusters=n_clusters)
-        results["kmeans"] = labels
-        st.plotly_chart(plot_clusters(pipe.numeric_df.values, labels, f"KMeans k={n_clusters}"), use_container_width=True)
-        st.dataframe(pipe.attach(labels, "KMeans").head(10))
+        clustered_df = pipe.attach(labels, "KMeans")
 
-    elif method == "dbscan":
-        labels = pipe.dbscan(eps=dbscan_eps, min_samples=dbscan_min_samples)
-        results["dbscan"] = labels
-        st.plotly_chart(plot_clusters(pipe.numeric_df.values, labels, "DBSCAN"), use_container_width=True)
-        st.dataframe(pipe.attach(labels, "DBSCAN").head(10))
+        fig = plot_clusters(pipe.numeric_df.values, labels, "KMeans Clusters")
+        st.plotly_chart(fig, width="stretch")
 
-    elif method == "agglomerative":
-        labels = pipe.agglomerative(n_clusters=n_clusters, linkage="ward")
-        results["agglomerative"] = labels
-        st.plotly_chart(plot_clusters(pipe.numeric_df.values, labels, "Agglomerative"), use_container_width=True)
+        st.dataframe(clustered_df.head(20))
 
-        # dendrogram
-        Z = pipe.hierarchical(method="ward")
-        fig_dend = ff.create_dendrogram(Z, orientation="top")
-        fig_dend.update_layout(height=500)
-        st.plotly_chart(fig_dend, use_container_width=True)
+        # Subcluster pie per STATUS
+        st.markdown("### Subcluster Distribution per STATUS")
+        for code, status_label in STATUS_MAP.items():
+            sub = clustered_df[clustered_df["STATUS_IDM_2024"] == code]
+            if len(sub) == 0:
+                continue
+            pie = px.pie(
+                sub,
+                names="KMeans",
+                title=f"KMeans — {status_label}",
+                hole=0.25
+            )
+            st.plotly_chart(pie, width="stretch")
+
 
     elif method == "fuzzy":
         labels = pipe.fuzzy_cmeans(n_clusters=n_clusters, m=2.0)
-        results["fuzzy"] = labels
+        clustered_df = pipe.attach(labels, "Fuzzy")
 
-        st.dataframe(pd.DataFrame({"Label": labels}).head(10))
+        fig = plot_clusters(pipe.numeric_df.values, labels, "Fuzzy C-Means")
+        st.plotly_chart(fig, width="stretch")
 
-        # membership matrix
+        st.dataframe(clustered_df.head(20))
+
+        # Membership matrix
         try:
             u = pipe.fuzzy_model.u.T
+            st.subheader("Fuzzy Membership Matrix (first 20 rows)")
             cols = [f"p_cluster_{i}" for i in range(u.shape[1])]
             st.dataframe(pd.DataFrame(u, columns=cols).head(20))
         except:
-            st.warning("Could not read fuzzy membership matrix.")
+            st.warning("Membership matrix unavailable.")
 
-        st.plotly_chart(plot_clusters(pipe.numeric_df.values, labels, "Fuzzy C-Means"), use_container_width=True)
+        # Subcluster pie per STATUS
+        st.markdown("### Subcluster Distribution per STATUS")
+        for code, status_label in STATUS_MAP.items():
+            sub = clustered_df[clustered_df["STATUS_IDM_2024"] == code]
+            if len(sub) == 0:
+                continue
+            pie = px.pie(
+                sub,
+                names="Fuzzy",
+                title=f"Fuzzy C-Means — {status_label}",
+                hole=0.25
+            )
+            st.plotly_chart(pie, width="stretch")
 
 
-st.success("Clustering completed successfully (including ALL mode).")
-
+st.success("Finished Clustering.")
