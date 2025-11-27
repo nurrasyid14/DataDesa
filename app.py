@@ -200,7 +200,8 @@ if run_button:
 
             # scatter using fuzzy hard labels
             fig = scatter_clusters(pipe.numeric_df.values, fuzzy_labels, f"FuzzyCMeans (k={n_clusters})")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
+
 
     # ---------------------------
     # Additional infographics / summary metrics

@@ -60,9 +60,9 @@ class Pipeline:
 
         # Extract numeric matrix for clustering
         self.numeric_df = (
-            df[numeric_cols + ["STATUS_IDM_2024"]]
-            .fillna(0)
-            .infer_objects(copy=False)
+        df[numeric_cols + ["STATUS_IDM_2024"]]
+        .fillna(0)
+        .infer_objects(copy=False)
         )
 
 
