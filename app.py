@@ -7,7 +7,7 @@ import numpy as np
 
 # Import your Pipeline and other modules
 from clustering.pipeline import Pipeline
-from clustering import Clustering
+from clustering.clusterer import Clustering
 from clustering.fuzzycmeans import FuzzyCMeans
 
 st.set_page_config(page_title="Indeks Desa Membangun Indonesia", layout="wide")
