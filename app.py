@@ -35,11 +35,11 @@ WARNING_STR = "Data hanya memuat Desa, kelurahan tidak diikutsertakan."
 # Load dataset (user said dataset exists locally)
 # replace 'data/idm_dataset.csv' with your actual path
 # ---------------------------
-DATA_PATH = "data/idm_dataset.csv"  # EDIT THIS PATH if needed
+DATA_PATH = "indeks-desa-membangun-tahun-2024-hasil-pemutakhiran.xlsx"  # EDIT THIS PATH if needed
 
 @st.cache_data
 def load_data(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path)
+    df = pd.read_excel(path)
     return df
 
 # Try to load dataset
