@@ -137,7 +137,7 @@ class Pipeline:
 
 
     # STATIC ENTRY
-    @staticmethodS
+    @staticmethod
     def run(df, method="kmeans", **kwargs):
         """
         Full one-click clustering:
