@@ -59,11 +59,14 @@ class Pipeline:
         self.cleaned_df = df
 
         # Extract numeric matrix for clustering
+        cols = numeric_cols + ["STATUS_IDM_2024"]
+
         self.numeric_df = (
-        df[numeric_cols + ["STATUS_IDM_2024"]]
-        .fillna(0)
-        .infer_objects(copy=False)
+            df[cols]
+            .apply(pd.to_numeric, errors="coerce")
+            .fillna(0)
         )
+
 
 
         return self.cleaned_df
