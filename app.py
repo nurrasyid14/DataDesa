@@ -21,6 +21,10 @@ STATUS_MAP = {
      0: "tertinggal",
      1: "berkembang",
      2: "maju"
+    "IDM" : "Indeks Desa Membangun",
+    "IKS" : "Indeks Ketahanan Sosial"
+    "IKE" : "Indeks Ketahanan Ekonomi"
+    "IKL" : "Indeks Ketahanan Lingkungan"
 }
 
 LEGENDS = {
