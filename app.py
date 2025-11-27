@@ -20,10 +20,10 @@ STATUS_MAP = {
     -1: "sangat tertinggal",
      0: "tertinggal",
      1: "berkembang",
-     2: "maju"
+     2: "maju",
     "IDM" : "Indeks Desa Membangun",
-    "IKS" : "Indeks Ketahanan Sosial"
-    "IKE" : "Indeks Ketahanan Ekonomi"
+    "IKS" : "Indeks Ketahanan Sosial",
+    "IKE" : "Indeks Ketahanan Ekonomi",
     "IKL" : "Indeks Ketahanan Lingkungan"
 }
 
