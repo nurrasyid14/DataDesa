@@ -27,9 +27,9 @@ DATA_PATH = "indeks-desa-membangun-tahun-2024-hasil-pemutakhiran.xlsx"
 # column names used by the app (adjust if your file differs)
 COL_STATUS = "STATUS_IDM_2024"
 COL_IDM = "NILAI_IDM_2024"
-COL_IKL = "IKL"
-COL_IKS = "IKS"
-COL_IKE = "IKE"
+COL_IKL = "IKL_2024"
+COL_IKS = "IKS_2024"
+COL_IKE = "IKE_2024"
 COL_PROV = "NAMA_PROVINSI"
 COL_DESA = "NAMA_DESA"
 
